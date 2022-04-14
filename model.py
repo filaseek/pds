@@ -249,23 +249,31 @@ while test_total_size_ms[0] == 0 and test_count_ms[0] == 0 :
     test_total_size_ms.remove(0) 
     test_count_ms.remove(0)
 
-test_points = [pair for pair in zip(test_total_size_ms, test_count_ms)]
-ground_truth= np.full(len(test_total_size_ms),1)
+while fake_total_size_ms[0] == 0 and fake_count_ms[0] == 0 : 
+    fake_total_size_ms.remove(0) 
+    fake_count_ms.remove(0)
+
+df = [pair for pair in zip(delta_time_ms, pck_size_ms)]
+df1= [pair for pair in zip(total_size_ms, count_ms)]
+
+svm_model = train_svm(df)
+svm_model1= train_svm(df1, gamma=0.001, nu=0.07) #0.001, 0.07, interval 20s = 92.95% precision
+
+
 
 positive_len = len([pair for pair in zip(test_delta_time_ms, test_pck_size_ms)] )
 negative_len = len([pair for pair in zip(fake_delta_time_ms, fake_pck_size_ms)])
 test_points_expanded = [pair for pair in zip(test_delta_time_ms, test_pck_size_ms)] + [pair for pair in zip(fake_delta_time_ms, fake_pck_size_ms)]
 ground_truth_expanded = np.concatenate((np.full(positive_len,1),np.full(negative_len,0)))
 
-df = [pair for pair in zip(delta_time_ms, pck_size_ms)]
-df1= [pair for pair in zip(total_size_ms, count_ms)]
 
-svm_model = train_svm(df)
-svm_model1= train_svm(df1, gamma=0.001, nu=0.07) #0.001, 0.07
-
+positive_len = len([pair for pair in zip(test_total_size_ms, test_count_ms)])
+negative_len = len([pair for pair in zip(fake_total_size_ms, fake_count_ms)])
+test_points_expanded1 = [pair for pair in zip(test_total_size_ms, test_count_ms)] + [pair for pair in zip(fake_total_size_ms, fake_total_size_ms)]
+ground_truth_expanded1= np.concatenate((np.full(positive_len,1),np.full(negative_len,0)))
 
 evaluate(svm_model, test_points_expanded, ground_truth_expanded)
-evaluate(svm_model1,test_points, ground_truth)
+evaluate(svm_model1,test_points_expanded1, ground_truth_expanded1)
 
 # test_points = [pair for pair in zip(test_delta_time_ms, test_pck_size_ms)]
 # ground_truth = np.full(len(test_points),1)
