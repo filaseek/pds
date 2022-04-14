@@ -15,7 +15,7 @@ from sklearn.metrics import confusion_matrix
 input_file_structure_labels = {0:"NO.", 1:"TIME", 2:"SOURCE", 3:"DESTINATION", 4:"PROTOCOL", 5:"LENGTH",6:"INFO"}
 MASTER = ""
 SLAVE = ""
-interval_len=120
+interval_len=60
 
 def read_input_file(input_file=os.path.join(os.getcwd(), "dataset","input_data.csv"), delim=','):
     with open(input_file,'r') as in_f:
@@ -59,6 +59,7 @@ def analyze_time(data):
     #print(max_time)
     resulting_counts = []
     avg_size = []
+    total_size = []
     t = 0
 
     while t <= max_time:
@@ -73,12 +74,13 @@ def analyze_time(data):
             avg_size.append(sum/current_cnt)
         else:
             avg_size.append('0')
+        total_size.append(sum)
         resulting_counts.append(current_cnt)
         t += interval_len
 
     #print(resulting_counts)
 
-    return avg_size, resulting_counts
+    return avg_size, total_size, resulting_counts
 
 
 def analyze_delta_time(data):
@@ -187,6 +189,8 @@ def evaluate(model, test_data, ground_truth):
     accuracy = (tp + tn) / (tp + tn + fp + fn) * 100
     print("ACCURACY:\t" + str(accuracy))
 
+
+
 content = read_input_file()
 if content[0][6].replace('"', '')[0:2] == "<-":
     SLAVE = content[0][2].replace('"','')
@@ -203,19 +207,20 @@ train_data, test_data = split_dataset(chosen_columns)
 #box_plot(master, slave)
 #sigma_rule(master)
 #sigma_rule(slave)
-
+# ----------------------------------------------------------REGULAR COMMUNICATION -------------------------
 MS_communication, pck_size_ms, SM_communication, pck_size_sm = separate_communication(train_data)
 
 pck_size_ms = pck_size_ms[:-1]
 pck_size_sm = pck_size_sm[:-1]
 
-avg_size_ms, count_ms = analyze_time(MS_communication)
-avg_size_sm, count_sm = analyze_time(SM_communication)
+avg_size_ms, total_size_ms, count_ms = analyze_time(MS_communication)
+avg_size_sm, total_size_sm, count_sm = analyze_time(SM_communication)
 delta_time_ms = analyze_delta_time(MS_communication)
 delta_time_sm = analyze_delta_time(SM_communication)
 calculate_statistics(delta_time_ms)
 #showplot(delta_time_sm, pck_size_sm)
 
+#------------------------------------------------------------ TEST COMMUNICATION ---------------------------
 test_MS_communication, test_pck_size_ms, test_SM_communication, test_pck_size_sm = separate_communication(test_data)
 
 test_pck_size_ms = test_pck_size_ms[:-1]
@@ -223,31 +228,51 @@ test_pck_size_sm = test_pck_size_sm[:-1]
 
 test_delta_time_ms = analyze_delta_time(test_MS_communication)
 test_delta_time_sm = analyze_delta_time(test_SM_communication)
+test_avg_size_ms, test_total_size_ms, test_count_ms = analyze_time(test_MS_communication)
+test_avg_size_sm, test_total_size_sm, test_count_sm = analyze_time(test_SM_communication)
 
-df = [pair for pair in zip(delta_time_ms, pck_size_ms)]
-# test_points = [pair for pair in zip(test_delta_time_ms, test_pck_size_ms)]
-# ground_truth = np.full(len(test_points),1)
-# print(ground_truth)
-# print(len(ground_truth))
-# svm_model = train_svm(df)
-# evaluate(svm_model, test_points, ground_truth)
-
+#---------------------------------------------------------- ANOMALIOUS COMMUNICATION ---------------------------
 fake_data = read_input_file(os.path.join(os.getcwd(),"dataset","fake_data.csv"))
 fake_columns, fake_labels = choose_columns(fake_data)
 
 fake_MS_communication, fake_pck_size_ms, fake_SM_communication, fake_pck_size_sm = separate_communication(fake_columns)
 fake_pck_size_ms = fake_pck_size_ms[:-1]
 fake_pck_size_sm = fake_pck_size_sm[:-1]
+
+fake_avg_size_ms, fake_total_size_ms, fake_count_ms = analyze_time(fake_MS_communication)
+fake_avg_size_sm, fake_total_size_sm, fake_count_sm = analyze_time(fake_SM_communication)
 fake_delta_time_ms = analyze_delta_time(fake_MS_communication)
 fake_delta_time_sm = analyze_delta_time(fake_SM_communication)
+#---------------------------------------------------------- MODEL PREPARATION --------------------------------
+
+while test_total_size_ms[0] == 0 and test_count_ms[0] == 0 : 
+    test_total_size_ms.remove(0) 
+    test_count_ms.remove(0)
+
+test_points = [pair for pair in zip(test_total_size_ms, test_count_ms)]
+ground_truth= np.full(len(test_total_size_ms),1)
 
 positive_len = len([pair for pair in zip(test_delta_time_ms, test_pck_size_ms)] )
 negative_len = len([pair for pair in zip(fake_delta_time_ms, fake_pck_size_ms)])
 test_points_expanded = [pair for pair in zip(test_delta_time_ms, test_pck_size_ms)] + [pair for pair in zip(fake_delta_time_ms, fake_pck_size_ms)]
 ground_truth_expanded = np.concatenate((np.full(positive_len,1),np.full(negative_len,0)))
 
+df = [pair for pair in zip(delta_time_ms, pck_size_ms)]
+df1= [pair for pair in zip(total_size_ms, count_ms)]
+
 svm_model = train_svm(df)
+svm_model1= train_svm(df1, gamma=0.001, nu=0.07) #0.001, 0.07
+
+
 evaluate(svm_model, test_points_expanded, ground_truth_expanded)
+evaluate(svm_model1,test_points, ground_truth)
+
+# test_points = [pair for pair in zip(test_delta_time_ms, test_pck_size_ms)]
+# ground_truth = np.full(len(test_points),1)
+# print(ground_truth)
+# print(len(ground_truth))
+# svm_model = train_svm(df)
+# evaluate(svm_model, test_points, ground_truth)
 
 #master, slave, master_packets, slave_packets = analyze_time(train_data)
 #graph_packets(master_packets, slave_packets)
