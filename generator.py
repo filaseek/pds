@@ -5,7 +5,7 @@ start_time = 17601.00000
 time = float(start_time)
 master = "192.168.11.248"
 slave = "192.168.11.111"
-number_of_generated_pcks = 1000
+number_of_generated_pcks = 10000
 
 f = open("fake_data.csv","w")
 f.write('"No.","Time","Source","Destination","Protocol","Length","Info"\n')

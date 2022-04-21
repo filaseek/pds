@@ -13,7 +13,8 @@ from sklearn.metrics import confusion_matrix
 input_file_structure_labels = {0:"NO.", 1:"TIME", 2:"SOURCE", 3:"DESTINATION", 4:"PROTOCOL", 5:"LENGTH",6:"INFO"}
 MASTER = ""
 SLAVE = ""
-interval_len=20
+interval_len=15
+
 def read_input_file(input_file=os.path.join(os.getcwd(), "dataset","input_data.csv"), delim=','):
     with open(input_file,'r') as in_f:
         _ = in_f.readline()
@@ -127,7 +128,6 @@ def sigma_rule(content, idx=3):
     correct_column = [int(line[idx]) for line in content]
 
     plt.figure(figsize=(6,4))
-    #plt.xlim(0,1000)
 
     mean = np.mean(correct_column)
     sigma = np.std(correct_column)
@@ -170,6 +170,7 @@ def calculate_statistics(content):
 def train_svm(data, gamma = 0.1, nu = 0.015):
     model = OneClassSVM(kernel = 'rbf', gamma = gamma, nu = nu)
     model.fit(data)
+    print("Fitted")
     return model
 
 def evaluate(model, test_data, ground_truth):
@@ -181,7 +182,7 @@ def evaluate(model, test_data, ground_truth):
     tn, fp, fn, tp = confusion_matrix(ground_truth, predicted_y).ravel()
     print(predicted_y)
     print(conf_mat)
-    #print(tn, fp, fn, tp)
+    print(tn, fp, fn, tp)
     accuracy = (tp + tn) / (tp + tn + fp + fn) * 100
     print("ACCURACY:\t" + str(accuracy))
 
@@ -212,9 +213,9 @@ delta_time_ms = analyze_delta_time(MS_communication)
 delta_time_sm = analyze_delta_time(SM_communication)
 
 
-#box_plot(MS_communication, SM_communication)
-#sigma_rule(MS_communication)
-#sigma_rule(SM_communication)
+# box_plot(MS_communication, SM_communication)
+# sigma_rule(MS_communication)
+# sigma_rule(SM_communication)
 # calculate_statistics(delta_time_ms)
 # calculate_statistics(delta_time_sm)
 # showplot(delta_time_ms, pck_size_ms)
@@ -245,42 +246,42 @@ fake_delta_time_ms = analyze_delta_time(fake_MS_communication)
 fake_delta_time_sm = analyze_delta_time(fake_SM_communication)
 #---------------------------------------------------------- MODEL PREPARATION --------------------------------
 
-while test_total_size_ms[0] == 0 and test_count_ms[0] == 0 : 
-    test_total_size_ms.remove(0) 
-    test_count_ms.remove(0)
+while test_total_size_sm[0] == 0 and test_count_sm[0] == 0 : 
+    test_total_size_sm.remove(0) 
+    test_count_sm.remove(0)
 
-while fake_total_size_ms[0] == 0 and fake_count_ms[0] == 0 : 
-    fake_total_size_ms.remove(0) 
-    fake_count_ms.remove(0)
+while fake_total_size_sm[0] == 0 and fake_count_sm[0] == 0 : 
+    fake_total_size_sm.remove(0) 
+    fake_count_sm.remove(0)
 
-df = [pair for pair in zip(delta_time_ms, pck_size_ms)]
-df1= [pair for pair in zip(total_size_ms, count_ms)]
+df = [pair for pair in zip(delta_time_sm, pck_size_sm)]
+df1= [pair for pair in zip(total_size_sm, count_sm)]
 
 svm_model = train_svm(df)
 svm_model1= train_svm(df1, gamma=0.001, nu=0.07) #0.001, 0.07, interval 20s = 92.95% precision
 
 
-positive_len = len([pair for pair in zip(test_delta_time_ms, test_pck_size_ms)] )
-negative_len = len([pair for pair in zip(fake_delta_time_ms, fake_pck_size_ms)])
-test_points_expanded = [pair for pair in zip(test_delta_time_ms, test_pck_size_ms)] + [pair for pair in zip(fake_delta_time_ms, fake_pck_size_ms)]
+positive_len = len([pair for pair in zip(test_delta_time_sm, test_pck_size_sm)] )
+negative_len = len([pair for pair in zip(fake_delta_time_sm, fake_pck_size_sm)])
+test_points_expanded = [pair for pair in zip(test_delta_time_sm, test_pck_size_sm)] + [pair for pair in zip(fake_delta_time_sm, fake_pck_size_sm)]
 ground_truth_expanded = np.concatenate((np.full(positive_len,1),np.full(negative_len,0)))
 
 
-positive_len = len([pair for pair in zip(test_total_size_ms, test_count_ms)])
-negative_len = len([pair for pair in zip(fake_total_size_ms, fake_count_ms)])
-test_points_expanded1 = [pair for pair in zip(test_total_size_ms, test_count_ms)] + [pair for pair in zip(fake_total_size_ms, fake_total_size_ms)]
+positive_len = len([pair for pair in zip(test_total_size_sm, test_count_sm)])
+negative_len = len([pair for pair in zip(fake_total_size_sm, fake_count_sm)])
+test_points_expanded1 = [pair for pair in zip(test_total_size_sm, test_count_sm)] + [pair for pair in zip(fake_total_size_sm, fake_total_size_sm)]
 ground_truth_expanded1= np.concatenate((np.full(positive_len,1),np.full(negative_len,0)))
 
 evaluate(svm_model, test_points_expanded, ground_truth_expanded)
 evaluate(svm_model1,test_points_expanded1, ground_truth_expanded1)
 
 #test_points = [pair for pair in zip(test_delta_time_sm, test_pck_size_sm)]
-#test_points = [pair for pair in zip(test_total_size_sm, test_count_sm)]
-#ground_truth = np.full(len(test_points),1)
+test_points = [pair for pair in zip(test_total_size_sm, test_count_sm)]
+ground_truth = np.full(len(test_points),1)
 #print(ground_truth)
 #print(len(ground_truth))
 #svm_model = train_svm(df)
-#evaluate(svm_model, test_points, ground_truth)
+#evaluate(svm_model1, test_points, ground_truth)
 
 #master, slave, master_packets, slave_packets = analyze_time(train_data)
 #graph_packets(master_packets, slave_packets)
