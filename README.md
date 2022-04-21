@@ -1,11 +1,11 @@
 <h1>PDS - projekt</h1>
 Projekt by měl být plně funkční. Obsahuje rozšíření v podobě anomální komunikace. Skript model.py je nastaven na pátý experiment viz dokumentace. Na standartní výstup vypisuje ground truth, dále confusion matrix a přesnost modelu. 
 <h2>Potřebné moduly:</h2>
-numpy
-mapplotlib
-scipy
-sklearn
-python3
+numpy\
+mapplotlib\
+scipy\
+sklearn\
+python3\
 
 <h2>Použití:</h2>
 python3 model.py
